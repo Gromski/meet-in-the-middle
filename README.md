@@ -4,7 +4,10 @@ A web-based service that calculates the optimal meeting point for groups based o
 
 ## Features
 
-- **Interactive Map Interface**: Add participants by clicking on the map or entering addresses
+- **Interactive Google Maps Interface**: Add participants by clicking on the map or typing addresses with autocomplete
+- **Dual Input Methods**:
+  - Click anywhere on the map to drop a pin and add a participant
+  - Use the form with Google Places Autocomplete for address search
 - **Automatic Center Calculation**: Finds the geographic centroid that minimizes travel for everyone
 - **Venue Discovery**: Search for cafes, restaurants, bars, parks, and other meeting spots near the center point
 - **Shareable Links**: Create a meetup and share the link with your group - no sign-up required
@@ -16,14 +19,15 @@ A web-based service that calculates the optimal meeting point for groups based o
 ### Frontend
 - **React 18** with TypeScript
 - **Vite** for fast development and building
-- **Leaflet.js** for interactive maps (using OpenStreetMap)
+- **Google Maps JavaScript API** with @react-google-maps/api
+- **Google Places Autocomplete** for address search
 - **React Router** for navigation
 
 ### Backend
 - **Node.js** with Express
 - **TypeScript** for type safety
 - **In-memory storage** (for MVP - easily upgradeable to PostgreSQL/MongoDB)
-- **Mock geocoding & venue APIs** (configurable to use Google Maps APIs)
+- **Mock geocoding & venue APIs** (fallback when API key not provided)
 
 ## Getting Started
 
@@ -133,22 +137,38 @@ meet-in-the-middle/
 
 ### Environment Variables
 
+#### Backend Configuration
+
 Create a `.env` file in the backend directory (see `backend/.env.example`):
 
 ```env
 PORT=3001
 NODE_ENV=development
 
-# Optional: Add Google Maps API key for real geocoding and venue data
+# Optional: Add Google Maps API key for server-side geocoding and venue data
 # GOOGLE_MAPS_API_KEY=your_api_key_here
 ```
 
-**Note**: The application works out of the box with mock data. To use real Google Maps APIs:
+#### Frontend Configuration (Required)
+
+Create a `.env` file in the frontend directory (see `frontend/.env.example`):
+
+```env
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+VITE_API_URL=http://localhost:3001
+```
+
+**Important**: The frontend requires a Google Maps API key to display the map. To set this up:
+
 1. Get an API key from [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable the following APIs:
-   - Geocoding API
-   - Places API
-3. Add the key to your `.env` file
+   - Maps JavaScript API (required for map display)
+   - Places API (required for address autocomplete)
+   - Geocoding API (optional - for reverse geocoding)
+3. Add the key to `frontend/.env` as `VITE_GOOGLE_MAPS_API_KEY`
+4. Optionally add the same key to `backend/.env` as `GOOGLE_MAPS_API_KEY` for real venue data
+
+**Note**: Without a frontend API key, the map will not load. The backend can still work with mock data if no API key is provided there.
 
 ## How It Works
 
@@ -188,25 +208,31 @@ Potential features for future releases:
 
 1. **Create a Meetup**: Go to the homepage and create a new meetup with a name
 2. **Share the Link**: Copy the link and share it with your group
-3. **Add Participants**: Each person clicks on the map to add their location, or enters an address
+3. **Add Participants** - Two ways:
+   - **Method 1**: Click anywhere on the Google Map to drop a pin → popover form appears → enter name → submit
+   - **Method 2**: Click "Add Participant" button → type address with autocomplete suggestions → select from dropdown → enter name → submit
 4. **View Center Point**: The red marker shows the optimal meeting point (appears after 2+ participants)
 5. **Find Venues**: Search for cafes, restaurants, or other venues near the center point
-6. **Select a Venue**: Click on green venue markers to see details
+6. **Select a Venue**: Click on green venue markers to see details and ratings
 
 ## Development Notes
 
-- The app uses OpenStreetMap tiles for the map (free, no API key required)
+- The app uses **Google Maps JavaScript API** for the map interface (API key required)
+- **Google Places Autocomplete** provides real-time address suggestions as you type
+- **Reverse geocoding** automatically fetches addresses when clicking map pins
 - In-memory storage means data is lost on server restart (suitable for MVP)
-- Mock geocoding includes several major cities and can parse coordinate pairs
 - Real-time updates use polling (5-second interval) - can be upgraded to WebSockets
+- Temporary marker bounces on map when dropping a pin before adding participant details
+- Map popover is positioned intelligently to stay within viewport bounds
 
 ## Contributing
 
 This is an MVP implementation. Contributions are welcome for:
 - Database integration (PostgreSQL/MongoDB)
 - Real-time updates with WebSockets
-- Google Maps API integration
+- Travel time optimization (vs current distance-based calculation)
 - Enhanced UI/UX
+- User authentication and saved profiles
 - Additional features from the PRD
 
 ## License
