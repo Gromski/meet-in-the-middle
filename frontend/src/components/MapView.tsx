@@ -26,6 +26,39 @@ const mapOptions: google.maps.MapOptions = {
   fullscreenControl: true,
 };
 
+/**
+ * Extract initials from a display name
+ * Examples: "John Doe" -> "JD", "Alice" -> "A", "Bob Smith Jones" -> "BJ"
+ */
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].charAt(0).toUpperCase();
+  // Take first letter of first word and first letter of last word
+  return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+}
+
+/**
+ * Create a custom marker icon with initials
+ */
+function createMarkerWithInitials(initials: string, color: string = '#3b82f6'): google.maps.Icon {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="3"/>
+      <text x="20" y="20" text-anchor="middle" dominant-baseline="central"
+            font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+        ${initials}
+      </text>
+    </svg>
+  `;
+
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(40, 40),
+    anchor: new google.maps.Point(20, 20),
+  };
+}
+
 function MapView({ center, participants, centerPoint, venues, onMapClick, tempMarker }: MapViewProps) {
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -71,35 +104,31 @@ function MapView({ center, participants, centerPoint, venues, onMapClick, tempMa
         onClick={handleMapClick}
       >
         {/* Participant markers */}
-        {participants.map((participant) => (
-          <Marker
-            key={participant.id}
-            position={{
-              lat: participant.location.coordinates.lat,
-              lng: participant.location.coordinates.lng
-            }}
-            title={participant.displayName}
-            onClick={() => setSelectedMarker(participant.id)}
-            icon={{
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 10,
-              fillColor: '#3b82f6',
-              fillOpacity: 1,
-              strokeColor: 'white',
-              strokeWeight: 3,
-            }}
-          >
-            {selectedMarker === participant.id && (
-              <InfoWindow onCloseClick={() => setSelectedMarker(null)}>
-                <div>
-                  <strong>{participant.displayName}</strong>
-                  <br />
-                  {participant.location.address || 'Custom location'}
-                </div>
-              </InfoWindow>
-            )}
-          </Marker>
-        ))}
+        {participants.map((participant) => {
+          const initials = getInitials(participant.displayName);
+          return (
+            <Marker
+              key={participant.id}
+              position={{
+                lat: participant.location.coordinates.lat,
+                lng: participant.location.coordinates.lng
+              }}
+              title={participant.displayName}
+              onClick={() => setSelectedMarker(participant.id)}
+              icon={createMarkerWithInitials(initials, '#3b82f6')}
+            >
+              {selectedMarker === participant.id && (
+                <InfoWindow onCloseClick={() => setSelectedMarker(null)}>
+                  <div>
+                    <strong>{participant.displayName}</strong>
+                    <br />
+                    {participant.location.address || 'Custom location'}
+                  </div>
+                </InfoWindow>
+              )}
+            </Marker>
+          );
+        })}
 
         {/* Temporary marker while adding participant */}
         {tempMarker && (
