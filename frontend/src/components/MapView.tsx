@@ -17,25 +17,25 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom icons
+// Custom icons using URL-encoded SVGs
 const centerIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <circle cx="16" cy="16" r="12" fill="#ef4444" stroke="white" stroke-width="3"/>
-      <circle cx="16" cy="16" r="4" fill="white"/>
-    </svg>
-  `),
+  iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+    '<circle cx="16" cy="16" r="12" fill="#ef4444" stroke="white" stroke-width="3"/>' +
+    '<circle cx="16" cy="16" r="4" fill="white"/>' +
+    '</svg>'
+  ),
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 
 const venueIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
-      <circle cx="15" cy="15" r="10" fill="#10b981" stroke="white" stroke-width="2"/>
-      <text x="15" y="20" text-anchor="middle" font-size="16" fill="white">☕</text>
-    </svg>
-  `),
+  iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">' +
+    '<circle cx="15" cy="15" r="10" fill="#10b981" stroke="white" stroke-width="2"/>' +
+    '<path d="M12 8 L12 18 M15 8 L15 14 L17 14 L17 8 M18 8 L18 11" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>' +
+    '</svg>'
+  ),
   iconSize: [30, 30],
   iconAnchor: [15, 15],
 });
