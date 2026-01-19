@@ -7,7 +7,7 @@ import type { Participant } from '../models/types.js';
 const router = Router();
 
 // Add a participant to a meetup
-router.post('/:meetupId/participants', (req, res) => {
+router.post('/:meetupId/participants', async (req, res) => {
   try {
     const { meetupId } = req.params;
     const { displayName, location } = req.body;
@@ -39,7 +39,7 @@ router.post('/:meetupId/participants', (req, res) => {
     storage.addParticipant(meetupId, participant);
 
     // Recalculate center point
-    recalculateCenterPoint(meetupId);
+    await recalculateCenterPoint(meetupId);
 
     res.status(201).json(participant);
   } catch (error) {
@@ -68,7 +68,7 @@ router.get('/:meetupId/participants', (req, res) => {
 });
 
 // Update a participant's location
-router.put('/:meetupId/participants/:participantId', (req, res) => {
+router.put('/:meetupId/participants/:participantId', async (req, res) => {
   try {
     const { meetupId, participantId } = req.params;
     const { location } = req.body;
@@ -91,7 +91,7 @@ router.put('/:meetupId/participants/:participantId', (req, res) => {
     }
 
     // Recalculate center point
-    recalculateCenterPoint(meetupId);
+    await recalculateCenterPoint(meetupId);
 
     res.json(updated);
   } catch (error) {
@@ -101,7 +101,7 @@ router.put('/:meetupId/participants/:participantId', (req, res) => {
 });
 
 // Remove a participant from a meetup
-router.delete('/:meetupId/participants/:participantId', (req, res) => {
+router.delete('/:meetupId/participants/:participantId', async (req, res) => {
   try {
     const { meetupId, participantId } = req.params;
 
@@ -118,7 +118,7 @@ router.delete('/:meetupId/participants/:participantId', (req, res) => {
     }
 
     // Recalculate center point
-    recalculateCenterPoint(meetupId);
+    await recalculateCenterPoint(meetupId);
 
     res.status(204).send();
   } catch (error) {

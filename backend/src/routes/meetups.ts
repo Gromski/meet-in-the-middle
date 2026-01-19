@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { storage } from '../models/storage.js';
 import { calculateCentroid } from '../services/centroid.js';
+import { findOptimalCenterByTravelTime } from '../services/travelTime.js';
 import type { Meetup } from '../models/types.js';
 
 const router = Router();
@@ -56,7 +57,7 @@ router.get('/:id', (req, res) => {
 });
 
 // Update a meetup
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, optimizationMode, transportMode } = req.body;
@@ -72,10 +73,16 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ error: 'Meetup not found' });
     }
 
+    // Recalculate center point if optimization or transport mode changed
+    if (optimizationMode || transportMode) {
+      await recalculateCenterPoint(id);
+    }
+
     const participants = storage.getParticipants(id);
+    const finalMeetup = storage.getMeetup(id);
 
     res.json({
-      ...updated,
+      ...finalMeetup,
       participants,
     });
   } catch (error) {
@@ -102,12 +109,25 @@ router.delete('/:id', (req, res) => {
 });
 
 // Recalculate center point for a meetup
-function recalculateCenterPoint(meetupId: string): void {
+async function recalculateCenterPoint(meetupId: string): Promise<void> {
+  const meetup = storage.getMeetup(meetupId);
+  if (!meetup) return;
+
   const participants = storage.getParticipants(meetupId);
-  if (participants.length > 0) {
-    const centerPoint = calculateCentroid(participants);
-    storage.updateMeetup(meetupId, { centerPoint });
+  if (participants.length === 0) return;
+
+  let centerPoint;
+
+  if (meetup.optimizationMode === 'travelTime') {
+    // Use travel-time-based optimization
+    const participantCoords = participants.map(p => p.location.coordinates);
+    centerPoint = await findOptimalCenterByTravelTime(participantCoords, meetup.transportMode);
+  } else {
+    // Use geometric centroid (distance-based)
+    centerPoint = calculateCentroid(participants);
   }
+
+  storage.updateMeetup(meetupId, { centerPoint });
 }
 
 export { router as meetupsRouter, recalculateCenterPoint };

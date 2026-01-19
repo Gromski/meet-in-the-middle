@@ -4,8 +4,9 @@ import MapView from './MapView';
 import ParticipantList from './ParticipantList';
 import AddParticipantForm from './AddParticipantForm';
 import VenueSearch from './VenueSearch';
+import OptimizationControls from './OptimizationControls';
 import { api } from '../services/api';
-import type { Meetup, Participant, Venue, Coordinates } from '../types';
+import type { Meetup, Participant, Venue, Coordinates, OptimizationMode, TransportMode } from '../types';
 import './MeetupPage.css';
 
 function MeetupPage() {
@@ -125,6 +126,18 @@ function MeetupPage() {
     setMapPopoverPosition(null);
   };
 
+  const handleOptimizationUpdate = async (optimizationMode: OptimizationMode, transportMode: TransportMode) => {
+    if (!meetupId) return;
+
+    try {
+      await api.updateMeetup(meetupId, { optimizationMode, transportMode });
+      await loadMeetup();
+    } catch (err) {
+      console.error('Failed to update optimization settings:', err);
+      alert('Failed to update settings. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="meetup-page loading">
@@ -180,6 +193,14 @@ function MeetupPage() {
               onCancel={handleCancelForm}
               prefilledLocation={null}
               isMapPopover={false}
+            />
+          )}
+
+          {meetup.participants.length >= 2 && (
+            <OptimizationControls
+              optimizationMode={meetup.optimizationMode}
+              transportMode={meetup.transportMode}
+              onUpdate={handleOptimizationUpdate}
             />
           )}
 
