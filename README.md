@@ -8,10 +8,14 @@ A web-based service that calculates the optimal meeting point for groups based o
 - **Dual Input Methods**:
   - Click anywhere on the map to drop a pin and add a participant
   - Use the form with Google Places Autocomplete for address search
-- **Automatic Center Calculation**: Finds the geographic centroid that minimizes travel for everyone
+- **Smart Center Point Optimization**: Choose between two calculation modes:
+  - **Distance Mode**: Finds the geometric centroid that minimizes total distance
+  - **Travel Time Mode**: Uses Google Distance Matrix API to find a point that balances actual travel times
+  - Support for 4 transport modes: walking (🚶), transit (🚇), driving (🚗), cycling (🚴)
+- **Participant Initials on Markers**: Each pin shows the participant's initials for easy identification
 - **Venue Discovery**: Search for cafes, restaurants, bars, parks, and other meeting spots near the center point
 - **Shareable Links**: Create a meetup and share the link with your group - no sign-up required
-- **Real-time Updates**: See the center point update automatically as participants join
+- **Real-time Updates**: See the center point update automatically as participants join or settings change
 - **Mobile Responsive**: Works seamlessly on desktop and mobile devices
 
 ## Tech Stack
@@ -172,37 +176,56 @@ VITE_API_URL=http://localhost:3001
 
 ## How It Works
 
-### Geographic Centroid Calculation
+### Center Point Optimization Modes
 
-The app calculates the meeting point using a simple geographic centroid algorithm:
+The app offers two sophisticated algorithms for finding the optimal meeting point:
 
-1. Collects all participant coordinates (latitude/longitude)
-2. Calculates the average latitude and longitude
-3. Updates in real-time as participants join or update locations
+#### Distance Mode (Geometric Centroid)
+- Fast calculation requiring no API calls
+- Calculates the geographic centroid (average latitude/longitude)
+- Minimizes total straight-line distance for all participants
+- Best for: Groups meeting in walkable areas, quick calculations
 
-This gives a fair meeting point that minimizes total travel distance for all participants.
+#### Travel Time Mode (API-Powered)
+- Uses Google Distance Matrix API for real-world travel times
+- Creates a 5×5 grid of candidate points within participant area
+- Queries actual travel times for each transport mode:
+  - 🚶 **Walking**: Pedestrian routes and timing
+  - 🚇 **Transit**: Public transportation schedules and transfers
+  - 🚗 **Driving**: Road routes accounting for traffic
+  - 🚴 **Cycling**: Bike-friendly paths
+- Uses minimax strategy: 70% weight on maximum travel time, 30% on average
+- Ensures no participant has an excessively long journey
+- Best for: Public transit users, large distances, traffic concerns
 
-### MVP Scope
+Both modes update automatically when participants join, leave, or change locations.
+
+### Implemented Features
 
 The current implementation includes:
-- ✅ Basic map interface with manual location pin placement
-- ✅ Simple geographic centroid calculation (distance-based)
+- ✅ Interactive Google Maps interface with pin dropping
+- ✅ Google Places Autocomplete for address search
+- ✅ Two optimization modes: Distance and Travel Time
+- ✅ Four transport modes: Walking, Transit, Driving, Cycling
+- ✅ Participant initials displayed on map markers
 - ✅ Add/remove participants with display names
 - ✅ Venue search with filtering by type
-- ✅ Shareable meetup links
+- ✅ Shareable meetup links (no authentication required)
+- ✅ Real-time center point recalculation
 - ✅ Mobile-responsive design
 
 ### Future Enhancements
 
 Potential features for future releases:
 - User accounts and authentication
-- Travel time optimization (accounting for traffic, public transit)
 - Saved location profiles (home, office, etc.)
-- Historical meetup data
-- Weather integration
+- Historical meetup data and analytics
+- Weather integration at meeting point
+- Accessibility information for venues
 - Calendar integration
 - Email/SMS notifications
 - Native mobile apps
+- Cost estimates for different transport modes
 
 ## Usage Example
 
@@ -211,9 +234,13 @@ Potential features for future releases:
 3. **Add Participants** - Two ways:
    - **Method 1**: Click anywhere on the Google Map to drop a pin → popover form appears → enter name → submit
    - **Method 2**: Click "Add Participant" button → type address with autocomplete suggestions → select from dropdown → enter name → submit
-4. **View Center Point**: The red marker shows the optimal meeting point (appears after 2+ participants)
-5. **Find Venues**: Search for cafes, restaurants, or other venues near the center point
-6. **Select a Venue**: Click on green venue markers to see details and ratings
+4. **Choose Optimization Mode** (appears after 2+ participants):
+   - Select **Distance** for fast geometric center
+   - Select **Travel Time** to optimize by actual journey times
+   - If using Travel Time, choose transport mode: 🚶 Walking, 🚇 Transit, 🚗 Driving, or 🚴 Cycling
+5. **View Center Point**: The red marker shows the optimal meeting point, recalculated based on your selected mode
+6. **Find Venues**: Search for cafes, restaurants, or other venues near the center point
+7. **Select a Venue**: Click on markers to see participant names (initials shown) or venue details
 
 ## Development Notes
 
@@ -229,9 +256,9 @@ Potential features for future releases:
 
 This is an MVP implementation. Contributions are welcome for:
 - Database integration (PostgreSQL/MongoDB)
-- Real-time updates with WebSockets
-- Travel time optimization (vs current distance-based calculation)
-- Enhanced UI/UX
+- Real-time updates with WebSockets (currently uses polling)
+- Cost estimates and route details for each transport mode
+- Enhanced UI/UX and accessibility improvements
 - User authentication and saved profiles
 - Additional features from the PRD
 
