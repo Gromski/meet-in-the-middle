@@ -1,0 +1,57 @@
+.add-participant-form {
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.add-participant-form h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.location-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.location-input-group input {
+  flex: 1;
+}
+
+.location-input-group button {
+  width: 44px;
+  padding: 0;
+}
+
+.hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.success {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.form-actions button {
+  flex: 1;
+}
