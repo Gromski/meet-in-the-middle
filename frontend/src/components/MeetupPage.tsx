@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from './MapView';
 import ParticipantList from './ParticipantList';
@@ -15,8 +15,10 @@ function MeetupPage() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addingLocation, setAddingLocation] = useState<Coordinates | null>(null);
+  const [showSidebarForm, setShowSidebarForm] = useState(false);
+  const [mapPopoverLocation, setMapPopoverLocation] = useState<Coordinates | null>(null);
+  const [mapPopoverPosition, setMapPopoverPosition] = useState<{ x: number; y: number } | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!meetupId) {
@@ -51,8 +53,9 @@ function MeetupPage() {
     try {
       await api.addParticipant(meetupId, displayName, location);
       await loadMeetup();
-      setShowAddForm(false);
-      setAddingLocation(null);
+      setShowSidebarForm(false);
+      setMapPopoverLocation(null);
+      setMapPopoverPosition(null);
     } catch (err) {
       console.error('Failed to add participant:', err);
       alert('Failed to add participant. Please try again.');
@@ -71,9 +74,25 @@ function MeetupPage() {
     }
   };
 
-  const handleMapClick = (coordinates: Coordinates) => {
-    setAddingLocation(coordinates);
-    setShowAddForm(true);
+  const handleMapClick = (coordinates: Coordinates, event?: any) => {
+    // Close sidebar form if open
+    setShowSidebarForm(false);
+
+    // Set map popover location
+    setMapPopoverLocation(coordinates);
+
+    // Calculate popover position relative to map container
+    if (event && mapContainerRef.current) {
+      const rect = mapContainerRef.current.getBoundingClientRect();
+      const x = event.domEvent.clientX - rect.left;
+      const y = event.domEvent.clientY - rect.top;
+
+      // Adjust position to keep popover in view
+      const adjustedX = Math.min(x, rect.width - 350); // 350 is approx form width
+      const adjustedY = Math.max(20, Math.min(y, rect.height - 300)); // 300 is approx form height
+
+      setMapPopoverPosition({ x: adjustedX, y: adjustedY });
+    }
   };
 
   const handleSearchVenues = async (type: string) => {
@@ -92,6 +111,18 @@ function MeetupPage() {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
     alert('Link copied to clipboard!');
+  };
+
+  const handleAddButtonClick = () => {
+    setShowSidebarForm(true);
+    setMapPopoverLocation(null);
+    setMapPopoverPosition(null);
+  };
+
+  const handleCancelForm = () => {
+    setShowSidebarForm(false);
+    setMapPopoverLocation(null);
+    setMapPopoverPosition(null);
   };
 
   if (loading) {
@@ -137,20 +168,18 @@ function MeetupPage() {
           />
 
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={handleAddButtonClick}
             className="primary add-participant-btn"
           >
             + Add Participant
           </button>
 
-          {showAddForm && (
+          {showSidebarForm && (
             <AddParticipantForm
               onSubmit={handleAddParticipant}
-              onCancel={() => {
-                setShowAddForm(false);
-                setAddingLocation(null);
-              }}
-              prefilledLocation={addingLocation}
+              onCancel={handleCancelForm}
+              prefilledLocation={null}
+              isMapPopover={false}
             />
           )}
 
@@ -170,17 +199,39 @@ function MeetupPage() {
         </div>
       </div>
 
-      <div className="map-container">
+      <div className="map-container" ref={mapContainerRef}>
         <MapView
           center={mapCenter}
           participants={meetup.participants}
           centerPoint={meetup.participants.length >= 2 ? meetup.centerPoint : null}
           venues={venues}
           onMapClick={handleMapClick}
+          tempMarker={mapPopoverLocation}
         />
-        <div className="map-hint">
-          💡 Click anywhere on the map to add a participant at that location
-        </div>
+
+        {!showSidebarForm && !mapPopoverLocation && (
+          <div className="map-hint">
+            💡 Click anywhere on the map to drop a pin and add a participant
+          </div>
+        )}
+
+        {mapPopoverLocation && mapPopoverPosition && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${mapPopoverPosition.x}px`,
+              top: `${mapPopoverPosition.y}px`,
+              zIndex: 1001,
+            }}
+          >
+            <AddParticipantForm
+              onSubmit={handleAddParticipant}
+              onCancel={handleCancelForm}
+              prefilledLocation={mapPopoverLocation}
+              isMapPopover={true}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

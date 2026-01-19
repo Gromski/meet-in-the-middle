@@ -1,129 +1,182 @@
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import { useEffect, useRef, useState } from 'react';
+import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Coordinates, Participant, Venue } from '../types';
-import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers in React-Leaflet
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-const DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// Custom icons using URL-encoded SVGs
-const centerIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
-    '<circle cx="16" cy="16" r="12" fill="#ef4444" stroke="white" stroke-width="3"/>' +
-    '<circle cx="16" cy="16" r="4" fill="white"/>' +
-    '</svg>'
-  ),
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
-const venueIcon = new L.Icon({
-  iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">' +
-    '<circle cx="15" cy="15" r="10" fill="#10b981" stroke="white" stroke-width="2"/>' +
-    '<path d="M12 8 L12 18 M15 8 L15 14 L17 14 L17 8 M18 8 L18 11" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>' +
-    '</svg>'
-  ),
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
+const libraries: ("places" | "geometry")[] = ["places", "geometry"];
 
 interface MapViewProps {
   center: Coordinates;
   participants: Participant[];
   centerPoint: Coordinates | null;
   venues: Venue[];
-  onMapClick?: (coordinates: Coordinates) => void;
+  onMapClick?: (coordinates: Coordinates, event?: any) => void;
+  tempMarker?: Coordinates | null;
 }
 
-function MapClickHandler({ onClick }: { onClick?: (coordinates: Coordinates) => void }) {
-  useMapEvents({
-    click: (e) => {
-      if (onClick) {
-        onClick({ lat: e.latlng.lat, lng: e.latlng.lng });
-      }
-    },
-  });
-  return null;
-}
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%'
+};
 
-function MapView({ center, participants, centerPoint, venues, onMapClick }: MapViewProps) {
+const mapOptions: google.maps.MapOptions = {
+  disableDefaultUI: false,
+  zoomControl: true,
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: true,
+};
+
+function MapView({ center, participants, centerPoint, venues, onMapClick, tempMarker }: MapViewProps) {
+  const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: '40px',
+        textAlign: 'center',
+        background: '#f9fafb'
+      }}>
+        <div>
+          <h2 style={{ color: '#ef4444', marginBottom: '12px' }}>Google Maps API Key Required</h2>
+          <p style={{ color: '#6b7280' }}>
+            Please add your Google Maps API key to <code>.env</code> file:<br/>
+            <code>VITE_GOOGLE_MAPS_API_KEY=your_api_key</code>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng && onMapClick) {
+      onMapClick({
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng()
+      }, e);
+    }
+  };
+
   return (
-    <MapContainer
-      center={[center.lat, center.lng]}
-      zoom={12}
-      style={{ width: '100%', height: '100%' }}
-      scrollWheelZoom={true}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <LoadScript googleMapsApiKey={apiKey} libraries={libraries}>
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={center}
+        zoom={12}
+        options={mapOptions}
+        onClick={handleMapClick}
+      >
+        {/* Participant markers */}
+        {participants.map((participant) => (
+          <Marker
+            key={participant.id}
+            position={{
+              lat: participant.location.coordinates.lat,
+              lng: participant.location.coordinates.lng
+            }}
+            title={participant.displayName}
+            onClick={() => setSelectedMarker(participant.id)}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: '#3b82f6',
+              fillOpacity: 1,
+              strokeColor: 'white',
+              strokeWeight: 3,
+            }}
+          >
+            {selectedMarker === participant.id && (
+              <InfoWindow onCloseClick={() => setSelectedMarker(null)}>
+                <div>
+                  <strong>{participant.displayName}</strong>
+                  <br />
+                  {participant.location.address || 'Custom location'}
+                </div>
+              </InfoWindow>
+            )}
+          </Marker>
+        ))}
 
-      <MapClickHandler onClick={onMapClick} />
+        {/* Temporary marker while adding participant */}
+        {tempMarker && (
+          <Marker
+            position={{ lat: tempMarker.lat, lng: tempMarker.lng }}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: '#f59e0b',
+              fillOpacity: 0.8,
+              strokeColor: 'white',
+              strokeWeight: 3,
+            }}
+            animation={google.maps.Animation.BOUNCE}
+          />
+        )}
 
-      {/* Participant markers */}
-      {participants.map((participant) => (
-        <Marker
-          key={participant.id}
-          position={[participant.location.coordinates.lat, participant.location.coordinates.lng]}
-        >
-          <Popup>
-            <div>
-              <strong>{participant.displayName}</strong>
-              <br />
-              {participant.location.address || 'Custom location'}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+        {/* Center point marker */}
+        {centerPoint && (
+          <Marker
+            position={{ lat: centerPoint.lat, lng: centerPoint.lng }}
+            title="Meeting Center Point"
+            onClick={() => setSelectedMarker('center')}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 12,
+              fillColor: '#ef4444',
+              fillOpacity: 1,
+              strokeColor: 'white',
+              strokeWeight: 3,
+            }}
+          >
+            {selectedMarker === 'center' && (
+              <InfoWindow onCloseClick={() => setSelectedMarker(null)}>
+                <div>
+                  <strong>Meeting Center Point</strong>
+                  <br />
+                  Optimal location for all participants
+                </div>
+              </InfoWindow>
+            )}
+          </Marker>
+        )}
 
-      {/* Center point marker */}
-      {centerPoint && (
-        <Marker position={[centerPoint.lat, centerPoint.lng]} icon={centerIcon}>
-          <Popup>
-            <div>
-              <strong>Meeting Center Point</strong>
-              <br />
-              Optimal location for all participants
-            </div>
-          </Popup>
-        </Marker>
-      )}
-
-      {/* Venue markers */}
-      {venues.map((venue) => (
-        <Marker
-          key={venue.placeId}
-          position={[venue.coordinates.lat, venue.coordinates.lng]}
-          icon={venueIcon}
-        >
-          <Popup>
-            <div>
-              <strong>{venue.name}</strong>
-              <br />
-              {venue.address}
-              <br />
-              {venue.rating && <span>Rating: {venue.rating} ⭐</span>}
-              <br />
-              <small>Distance: {Math.round(venue.distanceFromCenter)}m</small>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+        {/* Venue markers */}
+        {venues.map((venue) => (
+          <Marker
+            key={venue.placeId}
+            position={{ lat: venue.coordinates.lat, lng: venue.coordinates.lng }}
+            title={venue.name}
+            onClick={() => setSelectedMarker(venue.placeId)}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: '#10b981',
+              fillOpacity: 1,
+              strokeColor: 'white',
+              strokeWeight: 2,
+            }}
+          >
+            {selectedMarker === venue.placeId && (
+              <InfoWindow onCloseClick={() => setSelectedMarker(null)}>
+                <div>
+                  <strong>{venue.name}</strong>
+                  <br />
+                  {venue.address}
+                  <br />
+                  {venue.rating && <span>Rating: {venue.rating} ⭐</span>}
+                  <br />
+                  <small>Distance: {Math.round(venue.distanceFromCenter)}m</small>
+                </div>
+              </InfoWindow>
+            )}
+          </Marker>
+        ))}
+      </GoogleMap>
+    </LoadScript>
   );
 }
 
